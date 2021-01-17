@@ -12,6 +12,7 @@
     <module>chapter</module>
     <module>chapter02</module>
     <module>chapter03</module>
+      <module>chapter03</module>
   </modules>
 
   <name>data_algorithm</name>
