@@ -228,6 +228,248 @@ public class RBTree <K extends Comparable<K>,V>{
         root.color=BLACK;
     }
 
+    /**
+     *  查找指定节点的前驱节点，即小于node节点的最大值
+     * @param node
+     * @return
+     */
+    private RBNode predecessor(RBNode node){
+        if (node == null){
+            return null;
+        }
+        else if(node.left!=null){
+            RBNode p=node.left;
+            while (p.right!=null){
+                p=p.right;
+            }
+            return p;
+        }else{
+            RBNode p=node.parent;
+            RBNode ch = node;
+            while (p!=null&&ch == p.left){
+                p=p.parent;
+                ch=p;
+            }
+            return p;
+        }
+    }
+
+    /**
+     * 查找指定节点的后继节点
+     * @param node
+     * @return
+     */
+    private RBNode successor(RBNode node){
+        if (node == null){
+            return null;
+        }
+        else if (node.right !=null){
+            //从当前节点的右子树中，沿着左边找到对应的后继节点
+            RBNode p = node.left;
+            while (p.left!=null){
+                p=p.left;
+            }
+            return p;
+        }else {
+            //这一块是进不来的，但是，逻辑写一下
+            //当前节点没有右子树，所以，要向节点的上面寻找后继节点
+            //在第一次父子方向关系发生变化的时候，即是后继节点
+            RBNode p=node.parent;
+            RBNode ch=node;
+            while (p!=null&&ch == p.right){
+                p=p.parent;
+                ch=p;
+            }
+            return p;
+        }
+    }
+
+    public V remove(K key){
+        //根据key获取对应的节点
+        RBNode node =getNode(key);
+        if (node == null){
+            return null;
+        }
+        V oldValue = (V) node.value;
+        deleteNode(node);
+        return  oldValue;
+    }
+
+    /**
+     *  删除操作：
+     *  1、删除叶子节点，直接删除
+     *  2、删除的节点有一个子节点，那么用子节点来代替
+     *  3、如果删除的节点有2个子节点，此时需要找到前驱节点或者后继节点来代替
+     * @param node
+     */
+    private void deleteNode(RBNode node) {
+        //3、node节点有2个孩子节点
+        if(node.left!=null && node.right!=null){
+            //找到要是删除节点的后继节点
+            RBNode successor = successor(node);
+            //把后继节点的key，value都赋值给node
+            node.key=successor.key;
+            node.value=successor.value;
+            //并把node引用指向后继节点
+            node=successor;
+        }
+
+        //此时node只有一个孩子，或者没有孩子
+        RBNode replacement=node.left !=null?node.left:node.right;
+
+        //2、replacement 替代节点不为null，则是有一个孩子的情况
+        if (replacement != null){
+            //把replacement替代节点挂载到node的父节点下
+            replacement.parent=node.parent;
+            //让node的父节点的儿子指针指向replacement替代节点
+            if (node.parent == null){//要删除的节点是根节点的情况，直接用替代节点替换根节点
+                root = replacement;
+            }else if (node == node.parent.left){
+                node.parent.left=replacement;
+            }else {
+                node.parent.right=replacement;
+            }
+
+            //node脱离树
+            node.left=node.right=node.parent=null;
+
+            //替换结束后，进行节点位置和颜色的调整
+            if (node.color == BLACK){
+                //以替代节点为基础，进行调整
+                //这个时候，要删除的node是黑色，它的替代节点肯定是红色
+                // 所以，此时的调整就是给替代节点变色，这样，就黑色平衡了
+                fixAfterRemove(replacement);
+            }
+        }else if(node.parent == null){//删除的节点就是根节点，但是，替代节点又不存在的情况
+            root=null;
+        }else{//1、删除的节点不是root节点，而且 replacement 替代节点为null的情况（即是叶子节点）
+            //因为replacement节点不存在，所以要先调整后删除，并以node节点进行调整
+            if (node.color == BLACK){
+                //删除的是黑色叶子节点，不可以直接删除，所以要先调整下树结构，调整到可以删除的时候，才进行删除操作
+                //另外，234树的二节点叶子节点，肯定是黑色
+                //黑色叶子节点是不能直接删除的，要问兄弟节点借等一系列调整之后，才能进行删除操作
+                //这就是，为什么这里，要先调整后删除的原因
+                fixAfterRemove(node);
+            }
+
+            //删除操作
+            if (node == node.parent.left){//删除左叶子
+                node.parent.left=null;
+            }else if(node == node.parent.right){//删除右叶子
+                node.parent.right=null;
+            }
+
+            node.parent=null;
+        }
+    }
+
+    /**
+     *  调整红黑树
+     * @param x 这里传入的x节点有两种可能
+     *                              1、有替代节点的情况，传入的一定是红色的替代节点，对应删除的第二种情况
+     *                              2、没有替代节点时，传入的一定是待删除的黑色叶子节点，对应删除的第一种情况
+     */
+    private void fixAfterRemove(RBNode x) {
+        //传入的是待删除的黑色叶子节点，且不为root节点,需要问兄弟节点借
+        while (x != root && x.color == BLACK){
+            if (x == x.parent.left){//处理x是左孩子的情况
+                //获取x的兄弟节点，因为此时x是左孩子，所以，兄弟节点一定是右孩子
+                RBNode rnode = rightOf(parentOf(x));
+                //如果此时兄弟节点是红色节点，则要进行旋转调整，找到红黑树中真正可用的兄弟节点
+                if (colorOf(rnode)==RED){
+                    //把兄弟节点染黑
+                    setColor(rnode,BLACK);
+                    //把父节点染红
+                    setColor(parentOf(x),RED);
+                    //进行左旋转
+                    leftRotate(parentOf(x));
+                    //给兄弟节点重新赋值,找到真正可用的兄弟节点
+                    rnode=rightOf(parentOf(x));
+                }
+                //兄弟节点没有的借，即兄弟节点没有孩子节点
+                //因为上面找到了真正可用的黑色兄弟节点，所以，这个兄弟节点的还在一定是红色节点，可用这种方式判空
+                if (colorOf(leftOf(rnode))==BLACK&&colorOf(rightOf(rnode))==BLACK){
+                    //兄弟没有的借，则直接把兄弟节点变红色，减少一个黑色节点，这样，保持黑色平衡
+                    setColor(rnode,RED);
+                    //把x往上层进行递归
+                    x=parentOf(x);
+                }
+                //兄弟节点有的借
+                else{
+                    //有的借，分2中小情况，兄弟节点是3节点或者兄弟节点是4节点
+                    //当右孩子为空的时候，左孩子一定不为空，要额外做一次右旋转，把右孩子变成不为空
+                    if(colorOf(rightOf(rnode))==BLACK){
+                        setColor(leftOf(rnode),BLACK);
+                        setColor(rnode,RED);
+                        rightRotate(rnode);
+                        rnode = rightOf(parentOf(x));
+                    }
+                    //右孩子不为空的时候，直接一次左旋转即可，不用考虑左孩子是否存在
+                    //这个时候，有两种情况，左孩子不为空，则是4节点，左孩子为空则是3节点
+                    //但是，两种情况都用同一种方式左旋处理即可
+                    setColor(rnode,colorOf(parentOf(x)));
+                    setColor(parentOf(x),BLACK);
+                    setColor(rightOf(rnode),BLACK);
+                    leftRotate(parentOf(x));
+                    x=root;//用于终止循环
+                }
+            }else{//处理x是右孩子的情况
+                //获取兄弟节点，因为此时x是右孩子，所以，兄弟节点一定是左孩子
+                RBNode lnode = leftOf(parentOf(x));
+                //如果兄弟节点是红色的，此时要进行旋转调整，找到真正可用的兄弟节点
+                if (colorOf(lnode)==RED){
+                    setColor(lnode,BLACK);
+                    setColor(parentOf(x),RED);
+                    rightRotate(parentOf(x));
+                    lnode=leftOf(parentOf(x));
+                }
+
+                //兄弟节点没有的借
+                if (colorOf(leftOf(lnode))==BLACK&&colorOf(rightOf(lnode))==BLACK){
+                    setColor(lnode,RED);
+                    x=parentOf(x);
+                }
+                //兄弟节点有的借
+                else{
+                    //分为2种小情况，兄弟节点是234树中的3节点或者4节点
+                    //如果兄弟节点的左孩子为空，则右孩子一定不为空，则额外进行一次左旋转，把左孩子变成不为空
+                    if (colorOf(leftOf(lnode))==BLACK){
+                        setColor(lnode,RED);
+                        setColor(rightOf(lnode),BLACK);
+                        leftRotate(lnode);
+                        lnode=leftOf(parentOf(x));
+                    }
+                    setColor(lnode,colorOf(parentOf(x)));
+                    setColor(parentOf(x),BLACK);
+                    setColor(leftOf(lnode),BLACK);
+                    rightRotate(parentOf(x));
+                    x=root;
+                }
+            }
+        }
+        //传入的是红色的替代节点，则直接染黑
+        // 如果是待删除的黑色叶子节点，则会向上递归x节点来处理兄弟没的借的情况
+        setColor(x,BLACK);
+    }
+
+    private RBNode getNode(K key) {
+        //从root根节点开始查找
+        RBNode node = this.root;
+        int cmp=0;
+        while (node != null){
+            //这个泛型的值比较，要注意下
+            cmp=key.compareTo((K) node.key);
+            if (cmp<0){
+                node = node.left;
+            }else if (cmp>0){
+                node = node.right;
+            }else{
+                return node;
+            }
+        }
+        return null;
+    }
+
     static class RBNode<K extends Comparable<K>,V>{
         private RBNode parent;
         private RBNode left;
