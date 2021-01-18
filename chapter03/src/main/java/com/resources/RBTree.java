@@ -296,9 +296,9 @@ public class RBTree<K extends Comparable<K>, V> {
         //3、node节点有2个孩子
         if(node.left!=null&&node.right!=null){
             //后继节点替代
-            RBNode rep = successor(node);
+//            RBNode rep = successor(node);
             //前驱节点替代
-//            RBNode rep= predecessor(node);
+            RBNode rep= predecessor(node);
             node.key = rep.key;
             node.value=rep.value;
             node=rep;

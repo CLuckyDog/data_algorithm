@@ -265,7 +265,7 @@ public class RBTree <K extends Comparable<K>,V>{
         }
         else if (node.right !=null){
             //从当前节点的右子树中，沿着左边找到对应的后继节点
-            RBNode p = node.left;
+            RBNode p = node.right;
             while (p.left!=null){
                 p=p.left;
             }
@@ -306,12 +306,13 @@ public class RBTree <K extends Comparable<K>,V>{
         //3、node节点有2个孩子节点
         if(node.left!=null && node.right!=null){
             //找到要是删除节点的后继节点
-            RBNode successor = successor(node);
+//            RBNode rep = successor(node);
+            RBNode rep = predecessor(node);
             //把后继节点的key，value都赋值给node
-            node.key=successor.key;
-            node.value=successor.value;
+            node.key=rep.key;
+            node.value=rep.value;
             //并把node引用指向后继节点
-            node=successor;
+            node=rep;
         }
 
         //此时node只有一个孩子，或者没有孩子
@@ -358,8 +359,19 @@ public class RBTree <K extends Comparable<K>,V>{
             }else if(node == node.parent.right){//删除右叶子
                 node.parent.right=null;
             }
-
             node.parent=null;
+
+//            //再删除
+//            if(node.parent!=null){
+//                if(node==node.parent.left){
+//                    node.parent.left=null;
+//                }
+//                else if(node==node.parent.right){
+//                    node.parent.right=null;
+//                }
+//                node.parent=null;
+//            }
+
         }
     }
 
@@ -371,8 +383,8 @@ public class RBTree <K extends Comparable<K>,V>{
      */
     private void fixAfterRemove(RBNode x) {
         //传入的是待删除的黑色叶子节点，且不为root节点,需要问兄弟节点借
-        while (x != root && x.color == BLACK){
-            if (x == x.parent.left){//处理x是左孩子的情况
+        while (x != root && colorOf(x) == BLACK){
+            if (x == leftOf(parentOf(x))){//处理x是左孩子的情况
                 //获取x的兄弟节点，因为此时x是左孩子，所以，兄弟节点一定是右孩子
                 RBNode rnode = rightOf(parentOf(x));
                 //如果此时兄弟节点是红色节点，则要进行旋转调整，找到红黑树中真正可用的兄弟节点
